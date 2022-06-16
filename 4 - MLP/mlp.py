@@ -1,3 +1,5 @@
+# MLP
+
 ############################################################
 ## USER PARAMETERS: dataset and reduced/not-reduced
 # Select the desired dataset (DATASET) and whether the number of samples must be reduced to the first 10000 (SMALL).
@@ -5,8 +7,7 @@ DATASET = 'swarm_lda.csv'
 SMALL = False
 ############################################################
 
-
-
+# Imports
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
@@ -16,8 +17,7 @@ import pandas as pd
 import time
 from sklearn.metrics import roc_auc_score
 
-
-# Dataset and reduction (or not) of sample size
+# Load dataset and train-val-test partition
 small = '' if not SMALL else 'S'
 path_DS = '../data/datasets/csv/'
 path_indices = '../data/partitions/csv/'
@@ -26,6 +26,34 @@ df_np = pd.read_csv(path_DS + DATASET).to_numpy()
 # Device: not necessary, it can run well in CPU
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
+# Model
+class MLP(nn.Module):
+  def __init__(self, input_size, hidden_size, output_size, num_layers):
+    super(MLP, self).__init__()
+    self.length = num_layers
+    fcs = []
+    fcs.append(nn.Linear(input_size, hidden_size))
+    for _ in range(self.length - 2):
+      fcs.append(nn.Linear(hidden_size, hidden_size))
+    fcs.append(nn.Linear(hidden_size, output_size))
+    self.fcs = nn.ModuleList(fcs)
+    self.activation = nn.ReLU(inplace=True)
+  
+  def forward(self, x):
+    x = x.float()
+    for i, fc in enumerate(self.fcs):
+      x = fc(x)
+      if i != self.length - 1:
+        x = self.activation(x)
+    return x
+
+# Model hyperparameters (chosen by a previous hyperparameter tuning process)
+WIDTH = 5
+LENGTH = 4
+LR = .1
+MOMENTUM = .9
+
+# TRAINING
 AUC_history, runningTime_history = [], []
 
 for PARTITION in range(1, 11):
@@ -49,46 +77,18 @@ for PARTITION in range(1, 11):
 
   t0=time.time()
 
-  class MLP(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
-      super(MLP, self).__init__()
-      self.fc1 = nn.Linear(input_size, hidden_size)
-      self.fc2 = nn.Linear(hidden_size, hidden_size)
-      self.fc3 = nn.Linear(hidden_size, hidden_size)
-      self.fc4 = nn.Linear(hidden_size, output_size)
-      self.activation = nn.ReLU(inplace=True)
-    
-    def forward(self, x):
-      x = x.float()
-      inp_h1 = self.fc1(x)
-      h1 = self.activation(inp_h1)
-      inp_h2 = self.fc2(h1)
-      h2 = self.activation(inp_h2)
-      inp_h3 = self.fc3(h2)
-      h3 = self.activation(inp_h3)
-      out = self.fc4(h3)
-      return out
-
   torch.manual_seed(0)
-  model = MLP(X_training.shape[1], 5, 2)
-  optimizer = torch.optim.SGD(model.parameters(), lr=.1, momentum=.9)
+  model = MLP(X_training.shape[1], WIDTH, 2, LENGTH).to(device)
+  optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=MOMENTUM)
   criterion = nn.CrossEntropyLoss()
 
-  nITERATIONS = 1000    #40000
-  LR = .01    # .0001
-  history_loss_training = []
-  history_loss_validation = []
-  history_weights = []
-
+  nITERATIONS = 1000
   maxACCVAL = -1
-  patience = 20   # lda, pca10, pca100
-  #patience = 1000    # pca500
+  patience = 20
   curr_waiting = 0
 
   for k in range(nITERATIONS):
     model.train()
-    #if k > 0:
-    #  model.weight.grad.data.zero_()
 
     # Predictions: y_hat
     y_hat_training = model.forward(X_trainingDEV)
@@ -120,8 +120,8 @@ for PARTITION in range(1, 11):
   with torch.no_grad():
     y_hat_testing = model.forward(X_testingDEV)
     predictions = y_hat_testing.argmax(dim=1)
-    accuracy_test = (predictions == y_testingDEV).sum()/predictions.shape[0]
-    AUC = roc_auc_score(y_testingDEV, predictions)
+    #accuracy_test = (predictions == y_testingDEV).sum()/predictions.shape[0]
+    AUC = roc_auc_score(y_testingDEV.to('cpu'), predictions.to('cpu'))
     print(f'AUC on the test set: {AUC : .16f} \t Running time: {running_time : .16f}')
     AUC_history.append(AUC)
     runningTime_history.append(running_time)
