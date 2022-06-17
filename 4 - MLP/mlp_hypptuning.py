@@ -4,10 +4,10 @@
 
 ############################################################
 ## USER PARAMETERS: model hyperparameters tuning grid
-WIDTH_GRID = [2, 32]#[2, 8, 32, 128, 256]
-LENGTH_GRID = [4,32]#[2, 4, 8, 32]
-LR_GRID = [1e-4,1e-1]#[1e-4, 1e-3, 1e-2, 1e-1]
-MOMENTUM_GRID = [.5,1.]#[.5, .8, .9, 1.]
+WIDTH_GRID = [2, 8, 32, 128] # [128, 256, 512]
+DEPTH_GRID = [1, 2, 4, 8, 32] # [1, 2, 4]
+LR_GRID = [1e-4, 1e-3, 1e-2, 1e-1] # [1e-3, 1e-2, .1, .5]
+MOMENTUM_GRID = [0., .5, .9, 1.5, 5.] # [0., .5, .9]
 ############################################################
 
 # Imports
@@ -35,12 +35,12 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # Model
 class MLP(nn.Module):
-  def __init__(self, input_size, hidden_size, output_size, num_layers):
+  def __init__(self, input_size, hidden_size, output_size, depth):
     super(MLP, self).__init__()
-    self.length = num_layers
+    self.depth = depth
     fcs = []
     fcs.append(nn.Linear(input_size, hidden_size))
-    for _ in range(self.length - 2):
+    for _ in range(self.depth - 1):   # depth: #layers excluding input layer
       fcs.append(nn.Linear(hidden_size, hidden_size))
     fcs.append(nn.Linear(hidden_size, output_size))
     self.fcs = nn.ModuleList(fcs)
@@ -50,7 +50,7 @@ class MLP(nn.Module):
     x = x.float()
     for i, fc in enumerate(self.fcs):
       x = fc(x)
-      if i != self.length - 1:
+      if i != self.depth:
         x = self.activation(x)
     return x
 
@@ -77,14 +77,14 @@ for PARTITION in range(1, 11):
 
   for width in WIDTH_GRID:
     # print(f'width {width}')
-    for length in LENGTH_GRID:
-      # print(f'length {length}')
+    for depth in DEPTH_GRID:
+      # print(f'depth {depth}')
       for lr in LR_GRID:
         # print(f'lr {lr}')
         for momentum in MOMENTUM_GRID:
           # print(f'momentum {momentum}')
           torch.manual_seed(0)
-          model = MLP(X_training.shape[1], width, 2, length).to(device)
+          model = MLP(X_training.shape[1], width, 2, depth).to(device)
           optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum)
           criterion = nn.CrossEntropyLoss()
 
@@ -129,26 +129,34 @@ for PARTITION in range(1, 11):
               (
                 AUC,
                 width,
-                length,
+                depth,
                 lr,
                 momentum,
               )
             )
             
-  print(f'Max AUC on partition {PARTITION}:', 
+  print(f'Max AUC on validation set, partition {PARTITION}:', 
     {np.max([i[0] for i in AUC_hyperp_partition], axis=0)})
 
   AUC_hyperp.append(max(AUC_hyperp_partition))
 
 AUC_hyperp = np.array(AUC_hyperp)
 
-for AUC, width, length, lr, momentum in AUC_hyperp:
-  print(AUC, width, length, lr, momentum)
+print()
+for AUC, width, depth, lr, momentum in AUC_hyperp:
+  print(AUC, width, depth, lr, momentum)
 
 modes = stats.mode(AUC_hyperp[:, 1:])[0][0]
-hypps = ['Width', 'Length', 'LR', 'Momentum']
+hypps = ['Width', 'Depth', 'LR', 'Momentum']
 assert len(modes) == len(hypps)
-print('Hyperparameters selection:')
+
+print('\nFrom')
+print(f'WIDTH_GRID {WIDTH_GRID}')
+print(f'DEPTH_GRID {DEPTH_GRID}')
+print(f'LR_GRID {LR_GRID}')
+print(f'MOMENTUM_GRID {MOMENTUM_GRID}')
+
+print('\nHyperparameters selection:')
 
 for i in range(len(hypps)):
   print(f'\t{hypps[i]}\t{modes[i]}')

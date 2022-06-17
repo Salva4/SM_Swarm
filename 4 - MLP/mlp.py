@@ -28,12 +28,12 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # Model
 class MLP(nn.Module):
-  def __init__(self, input_size, hidden_size, output_size, num_layers):
+  def __init__(self, input_size, hidden_size, output_size, depth):
     super(MLP, self).__init__()
-    self.length = num_layers
+    self.depth = depth
     fcs = []
     fcs.append(nn.Linear(input_size, hidden_size))
-    for _ in range(self.length - 2):
+    for _ in range(self.depth - 1):   # depth: #layers excluding input layer
       fcs.append(nn.Linear(hidden_size, hidden_size))
     fcs.append(nn.Linear(hidden_size, output_size))
     self.fcs = nn.ModuleList(fcs)
@@ -43,13 +43,13 @@ class MLP(nn.Module):
     x = x.float()
     for i, fc in enumerate(self.fcs):
       x = fc(x)
-      if i != self.length - 1:
+      if i != self.depth:
         x = self.activation(x)
     return x
 
 # Model hyperparameters (chosen by a previous hyperparameter tuning process)
 WIDTH = 5
-LENGTH = 4
+DEPTH = 3
 LR = .1
 MOMENTUM = .9
 
@@ -78,7 +78,7 @@ for PARTITION in range(1, 11):
   t0=time.time()
 
   torch.manual_seed(0)
-  model = MLP(X_training.shape[1], WIDTH, 2, LENGTH).to(device)
+  model = MLP(X_training.shape[1], WIDTH, 2, DEPTH).to(device)
   optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=MOMENTUM)
   criterion = nn.CrossEntropyLoss()
 
