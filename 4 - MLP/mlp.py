@@ -3,9 +3,18 @@
 ############################################################
 ## USER PARAMETERS: dataset and reduced/not-reduced
 # Select the desired dataset (DATASET) and whether the number of samples must be reduced to the first 10000 (SMALL).
-DATASET = 'swarm_lda.csv'
-SMALL = False
+DATASET = input('''- Write the name of the dataset:
+  original / lda / pca / autoenc / pca_corr1 / pca_corr2 / pca_corr3\n--> ''')
+assert DATASET in ['original', 'lda', 'pca', 'autoenc', 'pca_corr1', 'pca_corr2', 'pca_corr3']
+
+SMALL = input('Small dataset? (only 10000 first samples) no / yes\n--> ') if 'pca' in DATASET else 'no'
+assert SMALL in ['yes', 'no']
+
+BALANCED = input('Balanced dataset? no / yes\n--> ') \
+  if (SMALL == 'no') and ('corr' not in DATASET) else 'no'
+assert BALANCED in ['yes', 'no']
 ############################################################
+
 
 # Imports
 import numpy as np
@@ -18,12 +27,17 @@ import time
 from sklearn.metrics import roc_auc_score
 
 # Load dataset and train-val-test partition
-small = '' if not SMALL else 'S'
+ds_file = DATASET if DATASET != 'lda' else 'lda/lda_' if BALANCED == "no" else 'lda/balanced_lda_'  # partition specified later
+ds_file = ds_file if BALANCED == 'no' else 'balanced_' + ds_file
+ds_file += '.csv'
+small = '' if SMALL == 'no' else 'S'
+balanced = '' if BALANCED == 'no' else 'B'
 path_DS = '../data/datasets/csv/'
 path_indices = '../data/partitions/csv/'
-df_np = pd.read_csv(path_DS + DATASET).to_numpy()
+if DATASET != 'lda':
+  df_np = pd.read_csv(path_DS + ds_file).to_numpy()
 
-# Device: not necessary, it can run well in CPU
+# Device
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # Model
@@ -57,10 +71,13 @@ MOMENTUM = .9
 AUC_history, runningTime_history = [], []
 
 for PARTITION in range(1, 11):
+  if DATASET == 'lda':
+    df_np = pd.read_csv(path_DS + ds_file[:-4] + str(PARTITION) + ds_file[-4:]).to_numpy()
+
   # Training-validation-testing partition
-  train_indices = pd.read_csv(path_indices + 'iTrain'+small+str(PARTITION)+'.csv').squeeze()
-  val_indices = pd.read_csv(path_indices + 'iVal'+small+str(PARTITION)+'.csv').squeeze()
-  test_indices = pd.read_csv(path_indices + 'iTest'+small+str(PARTITION)+'.csv').squeeze()
+  train_indices = pd.read_csv(path_indices + 'iTrain'+small+balanced+str(PARTITION)+'.csv').squeeze()
+  val_indices = pd.read_csv(path_indices + 'iVal'+small+balanced+str(PARTITION)+'.csv').squeeze()
+  test_indices = pd.read_csv(path_indices + 'iTest'+small+balanced+str(PARTITION)+'.csv').squeeze()
 
   X_training, X_validation, X_testing = df_np[train_indices, :-1], df_np[val_indices, :-1], df_np[test_indices, :-1]
   y_training, y_validation, y_testing = df_np[train_indices, -1], df_np[val_indices, -1], df_np[test_indices, -1]

@@ -4,28 +4,27 @@
 % Code taken from "Analysis of the Worms, Illia Horenko 2022"
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-
 clc
 clear all
 close all
 
-%% Input2filename translator
-FILENAMES = containers.Map;
-FILENAMES('lda') = 'swarm_lda.mat'; 
-FILENAMES('pca') = 'swarm_pca10.mat'; 
-FILENAMES('autoenc') = 'auto_enc.mat'; 
-FILENAMES('pca_corr1%') = 'pca10_corrupt1.mat'; 
-FILENAMES('pca_corr2%') = 'pca10_corrupt2.mat'; 
-FILENAMES('pca_corr3%') = 'pca10_corrupt3.mat'; 
-
 %% INPUT
-ds_name = input(['- Write the name of the dataset:\n', ...
-	'lda / pca / autoenc / pca_corr1% / pca_corr2% / pca_corr3%\n'], 's');
+DS_NAME = input(['- Write the name of the dataset:\n', ...
+	'original / lda / pca / autoenc / pca_corr1 / pca_corr2 / pca_corr3\n'], 's');
 
-SMALL = input(['- Small dataset? (only 10000 first samples)\n', ...
+if DS_NAME(1:3) == "pca"
+    SMALL = input(['- Small dataset? (only 10000 first samples)\n', ...
 	'no / yes\n'], 's');
+else
+    SMALL = 'no';
+end
 
+if SMALL == "no" && (DS_NAME(1:end-1) ~= "pca_corr")
+    BALANCED = input('Balanced dataset? no / yes\n', 's');
+else
+    BALANCED = "no";
+end
+    
 % Write partition index of the training-validation-testing set (from 1 to 10);
 PARTITION = input(['- Training-validation-testing partition:\n', ...
 	'1 / 2 / 3 / 4 / 5 / 6 / 7 / 8 / 9 / 10\n'], 's');
@@ -34,15 +33,28 @@ PARTITION = input(['- Training-validation-testing partition:\n', ...
 
 
 %% Execution
-ds_mat = FILENAMES(ds_name);
-ds_path = '/Users/marcsalvado/Desktop/SM_Proj_CODE/data/datasets/mat/';
-ds_path = [ds_path, ds_mat];
-load(ds_path)
+if DS_NAME ~= "lda" && DS_NAME ~= "balanced_lda"
+    ds_mat = [DS_NAME, '.mat'];
+elseif DS_NAME == "lda" && BALANCED == "no"
+    ds_mat = ['lda/lda_', PARTITION, '.mat'];
+elseif DS_NAME == "lda"
+    ds_mat = ['lda/balanced_lda_', PARTITION, '.mat'];
+end
 
 path_indices = '/Users/marcsalvado/Desktop/SM_Proj_CODE/data/partitions/mat/indices';
 
 if SMALL == "yes"
     path_indices = [path_indices, 'S'];
+elseif BALANCED == "yes"
+    path_indices = [path_indices, 'B'];
+    ds_mat = ['balanced_', ds_mat];
+end
+
+ds_path = '/Users/marcsalvado/Desktop/SM_Proj_CODE/data/datasets/mat/';
+ds_path = [ds_path, ds_mat]
+load(ds_path)
+
+if SMALL == "yes"
     X = X(1:10000, :); y = y(1:10000);
 end
 
@@ -57,7 +69,6 @@ end
 
 
 addpath('ProgramFiles/')
-addpath('Input/')
 
 %% Rescale features to interval [0,1]
 X = X_norm;     % normalization has already been done as preprocessing
@@ -68,8 +79,6 @@ rand('seed',1);
 randn('seed',1);
 
 addpath('ProgramFiles/')
-addpath('Output/')
-addpath('Input/')
 
 %% Set this flag to 1 if you have the licence for a "Parallel Computing" toolbox of MATLAB
 flag_parallel=1;
