@@ -1,13 +1,23 @@
 ## MLP - Hyperparameters tuning
 
-# Each partition: 1m 30s
-
 ############################################################
 ## USER PARAMETERS: model hyperparameters tuning grid
-WIDTH_GRID = [2, 8, 32, 128] # [128, 256, 512]
-DEPTH_GRID = [1, 2, 4, 8, 32] # [1, 2, 4]
-LR_GRID = [1e-4, 1e-3, 1e-2, 1e-1] # [1e-3, 1e-2, .1, .5]
-MOMENTUM_GRID = [0., .5, .9, 1.5, 5.] # [0., .5, .9]
+WIDTH_GRID = [2, 8, 32, 128]
+DEPTH_GRID = [1, 2, 4, 8, 32] 
+LR_GRID = [1e-4, 1e-3, 1e-2, 1e-1]
+MOMENTUM_GRID = [0., .5, .9, 1.5, 5.] 
+
+## USER INPUTS
+DATASET = input('''- Write the name of the dataset:
+  original / lda / pca / autoenc / pca_corr1 / pca_corr2 / pca_corr3\n--> ''')
+assert DATASET in ['original', 'lda', 'pca', 'autoenc', 'pca_corr1', 'pca_corr2', 'pca_corr3']
+
+SMALL = input('Small dataset? (only 10000 first samples) no / yes\n--> ') if 'pca' in DATASET else 'no'
+assert SMALL in ['yes', 'no']
+
+BALANCED = input('Balanced dataset? no / yes\n--> ') \
+  if (SMALL == 'no') and ('corr' not in DATASET) else 'no'
+assert BALANCED in ['yes', 'no']
 ############################################################
 
 # Imports
@@ -20,15 +30,17 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score
 from scipy import stats
 
-# Hyperparameters tuning dataset
-DATASET = 'swarm_lda.csv'
-SMALL = False
+PARTITION = 1   # Hyperparameter tuning done on Partition 1
 
-# Load dataset and train-val partition
-small = '' if not SMALL else 'S'
+# Load dataset and train-val-test partition
+ds_file = DATASET if DATASET != 'lda' else 'lda/lda_1' if BALANCED == "no" else 'lda/balanced_lda_1' 
+ds_file = ds_file if BALANCED == 'no' else 'balanced_' + ds_file
+ds_file += '.csv'
+small = '' if SMALL == 'no' else 'S'
+balanced = '' if BALANCED == 'no' else 'B'
 path_DS = '../data/datasets/csv/'
 path_indices = '../data/partitions/csv/'
-df_np = pd.read_csv(path_DS + DATASET).to_numpy()
+df_np = pd.read_csv(path_DS + ds_file).to_numpy()
 
 # Device: not necessary, it can run well in CPU
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -54,116 +66,87 @@ class MLP(nn.Module):
         x = self.activation(x)
     return x
 
+# Training-validation partition (no test in the hyperparameters tuning)
+train_indices = pd.read_csv(path_indices + 'iTrain'+small+str(PARTITION)+'.csv').squeeze()
+val_indices = pd.read_csv(path_indices + 'iVal'+small+str(PARTITION)+'.csv').squeeze()
+
+X_training, X_validation = df_np[train_indices, :-1], df_np[val_indices, :-1]
+y_training, y_validation = df_np[train_indices, -1], df_np[val_indices, -1]
+
+# Convert to tensor
+X_trainingCPU, y_trainingCPU = torch.tensor(X_training, requires_grad=True), torch.tensor(y_training, requires_grad=False)
+X_validationCPU, y_validationCPU = torch.tensor(X_validation, requires_grad=False), torch.tensor(y_validation, requires_grad=False)
+
+# Select to device (CUDA if possible)
+X_trainingDEV, y_trainingDEV = X_trainingCPU.to(device), y_trainingCPU.to(device)
+X_validationDEV, y_validationDEV = X_validationCPU.to(device), y_validationCPU.to(device)
+
 # TRAINING
 AUC_hyperp = []
 
-for PARTITION in range(1, 11):
-  AUC_hyperp_partition = []
+for width in WIDTH_GRID:
+  for depth in DEPTH_GRID:
+    for lr in LR_GRID:
+      for momentum in MOMENTUM_GRID:
+        torch.manual_seed(0)
+        model = MLP(X_training.shape[1], width, 2, depth).to(device)
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum)
+        criterion = nn.CrossEntropyLoss()
 
-  # Training-validation partition (no test in the hyperparameters tuning)
-  train_indices = pd.read_csv(path_indices + 'iTrain'+small+str(PARTITION)+'.csv').squeeze()
-  val_indices = pd.read_csv(path_indices + 'iVal'+small+str(PARTITION)+'.csv').squeeze()
+        nITERATIONS = 1000
+        maxACCVAL = -1
+        patience = 20
+        curr_waiting = 0
 
-  X_training, X_validation = df_np[train_indices, :-1], df_np[val_indices, :-1]
-  y_training, y_validation = df_np[train_indices, -1], df_np[val_indices, -1]
+        for k in range(nITERATIONS):
+          model.train()
 
-  # Convert to tensor
-  X_trainingCPU, y_trainingCPU = torch.tensor(X_training, requires_grad=True), torch.tensor(y_training, requires_grad=False)
-  X_validationCPU, y_validationCPU = torch.tensor(X_validation, requires_grad=False), torch.tensor(y_validation, requires_grad=False)
+          # Predictions: y_hat
+          y_hat_training = model.forward(X_trainingDEV)
 
-  # Select to device (CUDA if possible)
-  X_trainingDEV, y_trainingDEV = X_trainingCPU.to(device), y_trainingCPU.to(device)
-  X_validationDEV, y_validationDEV = X_validationCPU.to(device), y_validationCPU.to(device)
+          loss_training = criterion(y_hat_training, y_trainingDEV.long())
 
-  for width in WIDTH_GRID:
-    # print(f'width {width}')
-    for depth in DEPTH_GRID:
-      # print(f'depth {depth}')
-      for lr in LR_GRID:
-        # print(f'lr {lr}')
-        for momentum in MOMENTUM_GRID:
-          # print(f'momentum {momentum}')
-          torch.manual_seed(0)
-          model = MLP(X_training.shape[1], width, 2, depth).to(device)
-          optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum)
-          criterion = nn.CrossEntropyLoss()
+          optimizer.zero_grad()
+          loss_training.backward()
+          optimizer.step()
 
-          nITERATIONS = 1000
-          maxACCVAL = -1
-          patience = 20
-          curr_waiting = 0
-
-          for k in range(nITERATIONS):
-            model.train()
-
-            # Predictions: y_hat
-            y_hat_training = model.forward(X_trainingDEV)
-
-            loss_training = criterion(y_hat_training, y_trainingDEV.long())
-
-            optimizer.zero_grad()
-            loss_training.backward()
-            optimizer.step()
-
-            model.eval()
-            with torch.no_grad():
-              y_hat_validation = model.forward(X_validationDEV)
-              predictions = y_hat_validation.argmax(dim=1)
-              accuracy_val = (predictions == y_validationDEV).sum()/predictions.shape[0]
-
-            if accuracy_val.item() > maxACCVAL:
-              maxACCVAL = accuracy_val
-              curr_waiting = -1
-            curr_waiting += 1
-
-            if curr_waiting > patience:
-              break
-
-          # Testing on validation set (the hyperparameters tuning process shouldn't "see" the test set)
           model.eval()
           with torch.no_grad():
             y_hat_validation = model.forward(X_validationDEV)
             predictions = y_hat_validation.argmax(dim=1)
-            AUC = roc_auc_score(y_validationDEV.to('cpu'), predictions.to('cpu'))
-            AUC_hyperp_partition.append(
-              (
-                AUC,
-                width,
-                depth,
-                lr,
-                momentum,
-              )
+            accuracy_val = (predictions == y_validationDEV).sum()/predictions.shape[0]
+
+          if accuracy_val.item() > maxACCVAL:
+            maxACCVAL = accuracy_val
+            curr_waiting = -1
+          curr_waiting += 1
+
+          if curr_waiting > patience:
+            break
+
+        # "Testing" on validation set (the hyperparameters tuning process shouldn't "see" the test set)
+        model.eval()
+        with torch.no_grad():
+          y_hat_validation = model.forward(X_validationDEV)
+          predictions = y_hat_validation.argmax(dim=1)
+          AUC = roc_auc_score(y_validationDEV.to('cpu'), predictions.to('cpu'))
+          AUC_hyperp.append(
+            (
+              AUC,
+              width,
+              depth,
+              lr,
+              momentum,
             )
-            
-  print(f'Max AUC on validation set, partition {PARTITION}:', 
-    {np.max([i[0] for i in AUC_hyperp_partition], axis=0)})
+          )
 
-  AUC_hyperp.append(max(AUC_hyperp_partition))
+selection = max(AUC_hyperp)
 
-AUC_hyperp = np.array(AUC_hyperp)
+print(f'\nHyperparameters selection: (AUC: {selection[0]})')
 
-print()
-for AUC, width, depth, lr, momentum in AUC_hyperp:
-  print(AUC, width, depth, lr, momentum)
-
-modes = stats.mode(AUC_hyperp[:, 1:])[0][0]
 hypps = ['Width', 'Depth', 'LR', 'Momentum']
-assert len(modes) == len(hypps)
-
-print('\nFrom')
-print(f'WIDTH_GRID {WIDTH_GRID}')
-print(f'DEPTH_GRID {DEPTH_GRID}')
-print(f'LR_GRID {LR_GRID}')
-print(f'MOMENTUM_GRID {MOMENTUM_GRID}')
-
-print('\nHyperparameters selection:')
-
-for i in range(len(hypps)):
-  print(f'\t{hypps[i]}\t{modes[i]}')
-
-
-
-
+for i in range(1, len(selection)):
+  print(f'\t{hypps[i-1]}\t{selection[i]}')
 
 
 

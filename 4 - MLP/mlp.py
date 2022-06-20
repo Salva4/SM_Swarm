@@ -1,7 +1,7 @@
 # MLP
 
 ############################################################
-## USER PARAMETERS: dataset and reduced/not-reduced
+## USER INPUTS: dataset and reduced/not-reduced
 # Select the desired dataset (DATASET) and whether the number of samples must be reduced to the first 10000 (SMALL).
 DATASET = input('''- Write the name of the dataset:
   original / lda / pca / autoenc / pca_corr1 / pca_corr2 / pca_corr3\n--> ''')
@@ -13,6 +13,12 @@ assert SMALL in ['yes', 'no']
 BALANCED = input('Balanced dataset? no / yes\n--> ') \
   if (SMALL == 'no') and ('corr' not in DATASET) else 'no'
 assert BALANCED in ['yes', 'no']
+
+# Model hyperparameters
+WIDTH = int(input('NN Width: '))
+DEPTH = int(input('NN Depth: '))
+LR = float(input('LR: '))
+MOMENTUM = float(input('SGD momentum: '))
 ############################################################
 
 
@@ -61,23 +67,17 @@ class MLP(nn.Module):
         x = self.activation(x)
     return x
 
-# Model hyperparameters (chosen by a previous hyperparameter tuning process)
-WIDTH = 5
-DEPTH = 3
-LR = .1
-MOMENTUM = .9
-
 # TRAINING
 AUC_history, runningTime_history = [], []
 
-for PARTITION in range(1, 11):
+for partition in range(1, 11):
   if DATASET == 'lda':
-    df_np = pd.read_csv(path_DS + ds_file[:-4] + str(PARTITION) + ds_file[-4:]).to_numpy()
+    df_np = pd.read_csv(path_DS + ds_file[:-4] + str(partition) + ds_file[-4:]).to_numpy()
 
   # Training-validation-testing partition
-  train_indices = pd.read_csv(path_indices + 'iTrain'+small+balanced+str(PARTITION)+'.csv').squeeze()
-  val_indices = pd.read_csv(path_indices + 'iVal'+small+balanced+str(PARTITION)+'.csv').squeeze()
-  test_indices = pd.read_csv(path_indices + 'iTest'+small+balanced+str(PARTITION)+'.csv').squeeze()
+  train_indices = pd.read_csv(path_indices + 'iTrain'+small+balanced+str(partition)+'.csv').squeeze()
+  val_indices = pd.read_csv(path_indices + 'iVal'+small+balanced+str(partition)+'.csv').squeeze()
+  test_indices = pd.read_csv(path_indices + 'iTest'+small+balanced+str(partition)+'.csv').squeeze()
 
   X_training, X_validation, X_testing = df_np[train_indices, :-1], df_np[val_indices, :-1], df_np[test_indices, :-1]
   y_training, y_validation, y_testing = df_np[train_indices, -1], df_np[val_indices, -1], df_np[test_indices, -1]
@@ -139,7 +139,7 @@ for PARTITION in range(1, 11):
     predictions = y_hat_testing.argmax(dim=1)
     #accuracy_test = (predictions == y_testingDEV).sum()/predictions.shape[0]
     AUC = roc_auc_score(y_testingDEV.to('cpu'), predictions.to('cpu'))
-    print(f'AUC on the test set: {AUC : .16f} \t Running time: {running_time : .16f}')
+    print(f'AUC on the test set, partition {partition}: {AUC : .16f} \t Running time: {running_time : .16f}')
     AUC_history.append(AUC)
     runningTime_history.append(running_time)
 
