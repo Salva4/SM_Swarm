@@ -31,6 +31,10 @@ assert dataset in ['original', 'lda', 'pca', 'autoenc', 'pca_corr1', 'pca_corr2'
 assert small in ['yes', 'no']
 assert balanced in ['yes', 'no']
 
+print(f'''\nTraining & testing the dataset: {dataset} {
+  'small' if small == 'yes' else 'balanced' if balanced == 'yes' else '' 
+  }''')
+
 # Model hyperparameters
 width = args.width
 depth = args.depth
@@ -43,8 +47,8 @@ ds_file = ds_file if balanced == 'no' else 'balanced_' + ds_file
 ds_file += '.csv'
 small = '' if small == 'no' else 'S'
 balanced = '' if balanced == 'no' else 'B'
-path_DS = '../data/datasets/csv/'
-path_indices = '../data/partitions/csv/'
+path_DS = '../../data/datasets/csv/'
+path_indices = '../../data/partitions/csv/'
 if dataset != 'lda':
   df_np = pd.read_csv(path_DS + ds_file).to_numpy()
 
@@ -148,12 +152,4 @@ for partition in range(1, 11):
     AUC_history.append(AUC)
     runningTime_history.append(running_time)
 
-print(f'\nMean AUC: {np.mean(AUC_history)}\tMean running time: {np.mean(running_time)}')
-
-'''
-results = np.zeros((10, 2), np.float32)
-results[:, 0] = AUC_history
-results[:, 1] = runningTime_history
-for row in results:
-  print(f'\t{row[0]} {row[1]}')
-'''
+print(f'\nMean AUC: {np.mean(AUC_history)}\tMean running time: {np.mean(running_time)}\n\n')

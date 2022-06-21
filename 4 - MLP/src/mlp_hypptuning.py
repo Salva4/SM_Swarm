@@ -35,6 +35,10 @@ assert dataset in ['original', 'lda', 'pca', 'autoenc', 'pca_corr1', 'pca_corr2'
 assert small in ['yes', 'no']
 assert balanced in ['yes', 'no']
 
+print(f'''\nTuning hyperparameters for the dataset: {dataset} {
+  'small' if small == 'yes' else 'balanced' if balanced == 'yes' else '' 
+  }''')
+
 # Hyperparameter tuning is done on Partition 1
 PARTITION = 1   
 
@@ -44,8 +48,8 @@ ds_file = ds_file if balanced == 'no' else 'balanced_' + ds_file
 ds_file += '.csv'
 small = '' if small == 'no' else 'S'
 balanced = '' if balanced == 'no' else 'B'
-path_DS = '../data/datasets/csv/'
-path_indices = '../data/partitions/csv/'
+path_DS = '../../data/datasets/csv/'
+path_indices = '../../data/partitions/csv/'
 df_np = pd.read_csv(path_DS + ds_file).to_numpy()
 
 # Device: not necessary, it can run well in CPU
@@ -148,41 +152,11 @@ for width in WIDTH_GRID:
 
 selection = max(AUC_hyperp)
 
-print(f'\nHyperparameters selection: (AUC: {selection[0]})')
+print(f'Hyperparameters selection: (AUC: {selection[0]})')
 
 hypps = ['Width', 'Depth', 'LR', 'Momentum']
 for i in range(1, len(selection)):
   print(f'\t{hypps[i-1]}\t{selection[i]}')
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+print()
+print()

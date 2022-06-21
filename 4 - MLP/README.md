@@ -1,1 +1,7 @@
-Careful! The datasets aren't uploaded on GitHub. Original folder: SM_Proj_CODE
+# MLP
+
+- In order to recreate our experiments, run:
+	sh experiments.sh
+
+- In order to recreate the hyperparameter tuning process, run:
+	sh tuning.sh
