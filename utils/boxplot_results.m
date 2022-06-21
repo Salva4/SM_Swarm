@@ -568,28 +568,28 @@ XGB_autoencoder_balanced = [
 
 % 4. MLP
 MLP_original = [
-    0., 0.
-    0., 0.
-    0., 0.
-    0., 0.
-    0., 0.
-    0., 0.
-    0., 0.
-    0., 0.
-    0., 0.
-    0., 0.
+	0.8955841660499573 8.964405059814453
+	0.9046515226364136 7.925448417663574
+	0.9048606753349304 14.763538360595703
+	0.9133005142211914 7.209985733032227
+	0.910179078578949 10.96043586730957
+	0.9094660878181458 8.022645950317383
+	0.894477128982544 7.599828720092773
+	0.8913119435310364 7.691741943359375
+	0.9113308191299438 12.281637191772461
+	0.9190660119056702 6.066399574279785
 ];
 MLP_balanced = [
-    0., 0.
-    0., 0.
-    0., 0.
-    0., 0.
-    0., 0.
-    0., 0.
-    0., 0.
-    0., 0.
-    0., 0.
-    0., 0.
+	0.9217560887336731 8.09547233581543
+	0.9266304969787598 5.179486274719238
+	0.9222695231437683 7.599034309387207
+	0.9245136976242065 7.596445083618164
+	0.9139613509178162 6.055469512939453
+	0.9158042669296265 6.718310356140137
+	0.9241854548454285 8.241006851196289
+	0.9212362170219421 5.891944408416748
+	0.9228406548500061 6.918665885925293
+	0.9166132807731628 9.609515190124512
 ];
 MLP_LDA = [
 	0.9006761312484741 0.06679153442382812
@@ -752,7 +752,7 @@ MLP_autoencoder_balanced = [
 %% Plot accuracies 
 figure()
 tl = tiledlayout(5, 3);
-title(tl,'AUC vs. classification algorithm for each dimensionality reduction method', ...
+title(tl,'AUC vs. method for each reduced dataset', ...
     'Fontsize', 20)
 AUC_eSPA = {eSPA_original(:,1); eSPA_balanced(:,1); eSPA_LDA(:,1); 
     eSPA_PCA(:,1); eSPA_autoencoder(:,1); eSPA_PCA_corrupted1(:,1);
@@ -784,17 +784,17 @@ for i = 1 : 5*3
     h = boxplot([AUC_eSPA{i} AUC_RF{i} AUC_XGB{i} AUC_MLP{i}], 'Notch', 'on');
     set(h,{'linew'},{1})
     set(gcf,'Position',[10 100 800  600]);
-    ylabel('AUC on validation data')
+    ylabel('AUC')
     grid on
     title(data_reduction{i})
     xticklabels({'eSPA', 'RF', 'XGB', 'MLP'})
-    %ylim([.8, .95])
+    ylim([.8, 1.])
 end        
 
 %% Plot running times  
 figure()
 tl2 = tiledlayout(5, 3);
-title(tl2,'Running time vs. classif. algorithm for each dimensionality reduction method', ...
+title(tl2,'Running time vs. method for each reduced dataset', ...
     'Fontsize', 20)
 time_eSPA = {eSPA_original(:,2); eSPA_balanced(:,2); eSPA_LDA(:,2); 
     eSPA_PCA(:,2); eSPA_autoencoder(:,2); eSPA_PCA_corrupted1(:,2);
@@ -825,30 +825,30 @@ for i = 1 : 5*3
     h = boxplot([time_eSPA{i} time_RF{i} time_XGB{i} time_MLP{i}], 'Notch', 'on');
     set(h,{'linew'},{1})
     set(gcf,'Position',[10 100 800  600]);
-    ylabel('CPU time (sec.)')
+    ylabel('running time (s)')
     set(gca,'YScale','log');
     grid on
     title(data_reduction{i})
     xticklabels({'eSPA', 'RF', 'XGB', 'MLP'})
-    %ylim([.03, 6])
+    ylim([.01, 12])
 end
        
 %% Write [averages, running times] for eSPA
-average_original = mean(eSPA_original, 1)
-average_balanced = mean(eSPA_balanced, 1)
-average_LDA = mean(eSPA_LDA, 1)
-average_PCA = mean(eSPA_PCA, 1)
-average_autoencoder = mean(eSPA_autoencoder, 1)
-average_PCA_corrupted1 = mean(eSPA_PCA_corrupted1, 1)
-average_PCA_corrupted2 = mean(eSPA_PCA_corrupted2, 1)
-average_PCA_corrupted3 = mean(eSPA_PCA_corrupted3, 1)
-average_PCA_small = mean(eSPA_PCA_small, 1)
-average_PCA_corrupted1_small = mean(eSPA_PCA_corrupted1_small, 1)
-average_PCA_corrupted2_small = mean(eSPA_PCA_corrupted2_small, 1)
-average_PCA_corrupted3_small = mean(eSPA_PCA_corrupted3_small, 1)
-average_LDA_balanced = mean(eSPA_LDA_balanced, 1)
-average_PCA_balanced = mean(eSPA_PCA_balanced, 1)
-average_autoencoder_balanced = mean(eSPA_autoencoder_balanced, 1)
+% average_original = mean(eSPA_original, 1)
+% average_balanced = mean(eSPA_balanced, 1)
+% average_LDA = mean(eSPA_LDA, 1)
+% average_PCA = mean(eSPA_PCA, 1)
+% average_autoencoder = mean(eSPA_autoencoder, 1)
+% average_PCA_corrupted1 = mean(eSPA_PCA_corrupted1, 1)
+% average_PCA_corrupted2 = mean(eSPA_PCA_corrupted2, 1)
+% average_PCA_corrupted3 = mean(eSPA_PCA_corrupted3, 1)
+% average_PCA_small = mean(eSPA_PCA_small, 1)
+% average_PCA_corrupted1_small = mean(eSPA_PCA_corrupted1_small, 1)
+% average_PCA_corrupted2_small = mean(eSPA_PCA_corrupted2_small, 1)
+% average_PCA_corrupted3_small = mean(eSPA_PCA_corrupted3_small, 1)
+% average_LDA_balanced = mean(eSPA_LDA_balanced, 1)
+% average_PCA_balanced = mean(eSPA_PCA_balanced, 1)
+% average_autoencoder_balanced = mean(eSPA_autoencoder_balanced, 1)
 
         
         

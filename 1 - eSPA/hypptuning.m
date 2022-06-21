@@ -48,7 +48,7 @@ elseif DS_NAME == "lda"
     ds_mat = ['lda/balanced_lda_', PARTITION, '.mat'];
 end
 
-path_indices = '/Users/marcsalvado/Desktop/SM_Proj_CODE/data/partitions/mat/indices';
+path_indices = '../../data/partitions/mat/indices';
 
 if SMALL == "yes"
     path_indices = [path_indices, 'S'];
@@ -57,7 +57,7 @@ elseif BALANCED == "yes"
     ds_mat = ['balanced_', ds_mat];
 end
 
-ds_path = '/Users/marcsalvado/Desktop/SM_Proj_CODE/data/datasets/mat/';
+ds_path = '../../data/datasets/mat/';
 ds_path = [ds_path, ds_mat]
 load(ds_path)
 
