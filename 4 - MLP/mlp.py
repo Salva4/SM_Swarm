@@ -1,26 +1,4 @@
-# MLP
-
-############################################################
-## USER INPUTS: dataset and reduced/not-reduced
-# Select the desired dataset (DATASET) and whether the number of samples must be reduced to the first 10000 (SMALL).
-DATASET = input('''- Write the name of the dataset:
-  original / lda / pca / autoenc / pca_corr1 / pca_corr2 / pca_corr3\n--> ''')
-assert DATASET in ['original', 'lda', 'pca', 'autoenc', 'pca_corr1', 'pca_corr2', 'pca_corr3']
-
-SMALL = input('Small dataset? (only 10000 first samples) no / yes\n--> ') if 'pca' in DATASET else 'no'
-assert SMALL in ['yes', 'no']
-
-BALANCED = input('Balanced dataset? no / yes\n--> ') \
-  if (SMALL == 'no') and ('corr' not in DATASET) else 'no'
-assert BALANCED in ['yes', 'no']
-
-# Model hyperparameters
-WIDTH = int(input('NN Width: '))
-DEPTH = int(input('NN Depth: '))
-LR = float(input('LR: '))
-MOMENTUM = float(input('SGD momentum: '))
-############################################################
-
+## MLP - Run experiments
 
 # Imports
 import numpy as np
@@ -31,16 +9,43 @@ import torch.nn.functional as F
 import pandas as pd 
 import time
 from sklearn.metrics import roc_auc_score
+import argparse
+
+# Parse inputs
+parser = argparse.ArgumentParser()
+parser.add_argument('--dataset', type=str, required=True)
+parser.add_argument('--small', type=str, default='no')
+parser.add_argument('--balanced', type=str, default='no')
+parser.add_argument('--width', type=int, default=5)
+parser.add_argument('--depth', type=int, default=4)
+parser.add_argument('--lr', type=float, default=1e-2)
+parser.add_argument('--momentum', type=float, default=.9)
+args = parser.parse_args()
+
+# Dataset, whether small (first 10000 samples) and whether balanced
+dataset = args.dataset
+small = args.small
+balanced = args.balanced
+
+assert dataset in ['original', 'lda', 'pca', 'autoenc', 'pca_corr1', 'pca_corr2', 'pca_corr3']
+assert small in ['yes', 'no']
+assert balanced in ['yes', 'no']
+
+# Model hyperparameters
+width = args.width
+depth = args.depth
+lr = args.lr
+momentum = args.momentum
 
 # Load dataset and train-val-test partition
-ds_file = DATASET if DATASET != 'lda' else 'lda/lda_' if BALANCED == "no" else 'lda/balanced_lda_'  # partition specified later
-ds_file = ds_file if BALANCED == 'no' else 'balanced_' + ds_file
+ds_file = dataset if dataset != 'lda' else 'lda/lda_' if balanced == "no" else 'lda/balanced_lda_'  # partition specified later
+ds_file = ds_file if balanced == 'no' else 'balanced_' + ds_file
 ds_file += '.csv'
-small = '' if SMALL == 'no' else 'S'
-balanced = '' if BALANCED == 'no' else 'B'
+small = '' if small == 'no' else 'S'
+balanced = '' if balanced == 'no' else 'B'
 path_DS = '../data/datasets/csv/'
 path_indices = '../data/partitions/csv/'
-if DATASET != 'lda':
+if dataset != 'lda':
   df_np = pd.read_csv(path_DS + ds_file).to_numpy()
 
 # Device
@@ -71,7 +76,7 @@ class MLP(nn.Module):
 AUC_history, runningTime_history = [], []
 
 for partition in range(1, 11):
-  if DATASET == 'lda':
+  if dataset == 'lda':
     df_np = pd.read_csv(path_DS + ds_file[:-4] + str(partition) + ds_file[-4:]).to_numpy()
 
   # Training-validation-testing partition
@@ -95,8 +100,8 @@ for partition in range(1, 11):
   t0=time.time()
 
   torch.manual_seed(0)
-  model = MLP(X_training.shape[1], WIDTH, 2, DEPTH).to(device)
-  optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=MOMENTUM)
+  model = MLP(X_training.shape[1], width, 2, depth).to(device)
+  optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum)
   criterion = nn.CrossEntropyLoss()
 
   nITERATIONS = 1000
@@ -143,7 +148,7 @@ for partition in range(1, 11):
     AUC_history.append(AUC)
     runningTime_history.append(running_time)
 
-print(f'Mean AUC: {np.mean(AUC_history)}\tMean running time: {np.mean(running_time)}')
+print(f'\nMean AUC: {np.mean(AUC_history)}\tMean running time: {np.mean(running_time)}')
 
 '''
 results = np.zeros((10, 2), np.float32)

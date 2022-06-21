@@ -1,25 +1,5 @@
 ## MLP - Hyperparameters tuning
 
-############################################################
-## USER PARAMETERS: model hyperparameters tuning grid
-WIDTH_GRID = [2, 8, 32, 128]
-DEPTH_GRID = [1, 2, 4, 8, 32] 
-LR_GRID = [1e-4, 1e-3, 1e-2, 1e-1]
-MOMENTUM_GRID = [0., .5, .9, 1.5, 5.] 
-
-## USER INPUTS
-DATASET = input('''- Write the name of the dataset:
-  original / lda / pca / autoenc / pca_corr1 / pca_corr2 / pca_corr3\n--> ''')
-assert DATASET in ['original', 'lda', 'pca', 'autoenc', 'pca_corr1', 'pca_corr2', 'pca_corr3']
-
-SMALL = input('Small dataset? (only 10000 first samples) no / yes\n--> ') if 'pca' in DATASET else 'no'
-assert SMALL in ['yes', 'no']
-
-BALANCED = input('Balanced dataset? no / yes\n--> ') \
-  if (SMALL == 'no') and ('corr' not in DATASET) else 'no'
-assert BALANCED in ['yes', 'no']
-############################################################
-
 # Imports
 import numpy as np
 import matplotlib.pyplot as plt
@@ -29,15 +9,41 @@ import torch.nn.functional as F
 import pandas as pd 
 from sklearn.metrics import roc_auc_score
 from scipy import stats
+import argparse
 
-PARTITION = 1   # Hyperparameter tuning done on Partition 1
+############################################################
+## USER PARAMETERS: model hyperparameters tuning grid
+WIDTH_GRID = [2, 8, 32, 128]
+DEPTH_GRID = [1, 2, 4, 8, 32] 
+LR_GRID = [1e-4, 1e-3, 1e-2, 1e-1]
+MOMENTUM_GRID = [0., .5, .9, 1.5, 5.] 
+############################################################
+
+# Parse inputs
+parser = argparse.ArgumentParser()
+parser.add_argument('--dataset', type=str, required=True)
+parser.add_argument('--small', type=str, default='no')
+parser.add_argument('--balanced', type=str, default='no')
+args = parser.parse_args()
+
+# Dataset, whether small (first 10000 samples) and whether balanced
+dataset = args.dataset
+small = args.small
+balanced = args.balanced
+
+assert dataset in ['original', 'lda', 'pca', 'autoenc', 'pca_corr1', 'pca_corr2', 'pca_corr3']
+assert small in ['yes', 'no']
+assert balanced in ['yes', 'no']
+
+# Hyperparameter tuning is done on Partition 1
+PARTITION = 1   
 
 # Load dataset and train-val-test partition
-ds_file = DATASET if DATASET != 'lda' else 'lda/lda_1' if BALANCED == "no" else 'lda/balanced_lda_1' 
-ds_file = ds_file if BALANCED == 'no' else 'balanced_' + ds_file
+ds_file = dataset if dataset != 'lda' else 'lda/lda_1' if balanced == "no" else 'lda/balanced_lda_1' 
+ds_file = ds_file if balanced == 'no' else 'balanced_' + ds_file
 ds_file += '.csv'
-small = '' if SMALL == 'no' else 'S'
-balanced = '' if BALANCED == 'no' else 'B'
+small = '' if small == 'no' else 'S'
+balanced = '' if balanced == 'no' else 'B'
 path_DS = '../data/datasets/csv/'
 path_indices = '../data/partitions/csv/'
 df_np = pd.read_csv(path_DS + ds_file).to_numpy()
