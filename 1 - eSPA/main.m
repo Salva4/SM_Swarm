@@ -36,7 +36,7 @@ CL_espa = input('eSPA hyperparameter eps_CL = ');
 %% Execution
 results_AUC = zeros(10, 2);
 results_time = zeros(10, 2);
-for partition = 1:1
+for partition = 1:10
     if DS_NAME ~= "lda" && DS_NAME ~= "balanced_lda"
         ds_mat = [DS_NAME, '.mat'];
     elseif DS_NAME == "lda" && BALANCED == "no"
@@ -89,10 +89,6 @@ for partition = 1:1
     K=4;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    % %%% Esborrar 1/2
-    % flag_parallel=0;
-    % %%%
-
     T = size(X,2);        % sample size
 
     %% Select flag_AUC=1 to use Area Under Curve as a performance metrics
@@ -103,11 +99,6 @@ for partition = 1:1
     reg_param(:,1) = [W_espa; CL_espa];
 
     paroptions = statset('UseParallel',true);
-
-    % %%% Esborrar 2/2
-    % display('Parallel false')
-    % paroptions = statset('UseParallel',false);
-    % %%%
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Extract training set from the dataset (valid+test will be done in
@@ -124,8 +115,8 @@ for partition = 1:1
         K,40,[],reg_param,X_valid,pi_valid,X_valid_ts,pi_valid_ts,1,flag_AUC,flag_parallel);
 
     format long
-    eSPA_AUC = -out_eSPA.L_pred_valid_Markov
-    eSPA_time = out_eSPA.time_Markov
+    eSPA_AUC = -out_eSPA.L_pred_valid_Markov;
+    eSPA_time = out_eSPA.time_Markov;
     results(partition, 1) = eSPA_AUC;
     results(partition, 2) = eSPA_time;
 end

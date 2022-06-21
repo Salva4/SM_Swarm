@@ -6,18 +6,31 @@ WIDTH_GRID = [2, 8, 32, 128]
 DEPTH_GRID = [1, 2, 4, 8, 32] 
 LR_GRID = [1e-4, 1e-3, 1e-2, 1e-1]
 MOMENTUM_GRID = [0., .5, .9, 1.5, 5.] 
+WIDTH_GRID = [256, 512]
+# DEPTH_GRID = [1, 2, 4, 8, 32] 
+LR_GRID = [1e-2, 1e-1, 1., 10.]
+MOMENTUM_GRID = [0., .5, .9, 1.5, 5.] 
+
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--ds', type=str, required=True)
+parser.add_argument('--small', type=str, required=False)
+parser.add_argument('--bal', type=str, required=False)
+args = parser.parse_args()
 
 ## USER INPUTS
-DATASET = input('''- Write the name of the dataset:
-  original / lda / pca / autoenc / pca_corr1 / pca_corr2 / pca_corr3\n--> ''')
+DATASET = args.ds
 assert DATASET in ['original', 'lda', 'pca', 'autoenc', 'pca_corr1', 'pca_corr2', 'pca_corr3']
 
-SMALL = input('Small dataset? (only 10000 first samples) no / yes\n--> ') if 'pca' in DATASET else 'no'
+SMALL = args.small if 'pca' in DATASET else 'no'
 assert SMALL in ['yes', 'no']
 
-BALANCED = input('Balanced dataset? no / yes\n--> ') \
+BALANCED = args.bal \
   if (SMALL == 'no') and ('corr' not in DATASET) else 'no'
 assert BALANCED in ['yes', 'no']
+
+print(DATASET, SMALL, BALANCED)
 ############################################################
 
 # Imports
@@ -38,8 +51,8 @@ ds_file = ds_file if BALANCED == 'no' else 'balanced_' + ds_file
 ds_file += '.csv'
 small = '' if SMALL == 'no' else 'S'
 balanced = '' if BALANCED == 'no' else 'B'
-path_DS = '../data/datasets/csv/'
-path_indices = '../data/partitions/csv/'
+path_DS = 'data/datasets/csv/'
+path_indices = 'data/partitions/csv/'
 df_np = pd.read_csv(path_DS + ds_file).to_numpy()
 
 # Device: not necessary, it can run well in CPU

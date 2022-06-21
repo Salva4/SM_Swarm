@@ -38,14 +38,6 @@ K=4;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 reg_param_W_espa=[1e-4 5e-4 1e-3 2e-3 3e-3 4e-3 6e-3 8e-3 1e-2 1.5e-2 2e-2 5e-2 1e-1 10];
 reg_param_CL_espa=[1e-6 1e-5 5e-5 1e-4 2e-4 5e-4 1e-3 5e-3 1e-2 1e-1];
-reg_param_W_espa=[10 100 1000];
-reg_param_CL_espa=[1e-1 10 100];
-
-% %%% Esborrar 1/2
-% flag_parallel=0;
-%reg_param_W_espa = [1e-4];
-%reg_param_CL_espa = [1e-1];
-% %%%
 
 %% Execution
 if DS_NAME ~= "lda" && DS_NAME ~= "balanced_lda"
@@ -110,11 +102,6 @@ for i=1:length(reg_param_W_espa)
     end
 end
 paroptions = statset('UseParallel',true);
-
-% %%% Esborrar 2/2
-% display('Parallel false')
-% paroptions = statset('UseParallel',false);
-% %%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Extract training set from the dataset (valid+test will be done in
